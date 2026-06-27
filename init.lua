@@ -190,7 +190,11 @@ rtp:prepend(lazypath)
 require('lazy').setup({
   -- NOTE: Plugins can be added via a link or github org/name. To run setup automatically, use `opts = {}`
   { 'NMAC427/guess-indent.nvim', opts = {} },
-
+  {
+    'pmizio/typescript-tools.nvim',
+    dependencies = { 'nvim-lua/plenary.nvim', 'neovim/nvim-lspconfig' },
+    opts = {},
+  },
   { 'christoomey/vim-tmux-navigator', lazy = false },
 
   { 'github/copilot.vim' },
@@ -670,6 +674,8 @@ require('lazy').setup({
         'lua-language-server', -- Lua Language server
         'stylua', -- Used to format Lua code
         'copilot-language-server', -- Copilot LSP server used by copilot-lsp
+        'ruff', -- Python linter
+        'tailwindcss-language-server', -- TailwindCSS LSP server
         -- You can add other tools here that you want Mason to install
       })
 
