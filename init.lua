@@ -37,13 +37,13 @@ vim.o.linebreak = true
 vim.keymap.set('n', 'j', "v:count ? 'j' : 'gj'", { noremap = true, expr = true })
 vim.keymap.set('n', 'k', "v:count ? 'k' : 'gk'", { noremap = true, expr = true })
 -- Auto close common symbols
-vim.keymap.set('i', '(', '()<Left>', { noremap = true, silent = true })
-vim.keymap.set('i', '"', '""<Left>', { noremap = true, silent = true })
-vim.keymap.set('i', "'", "''<Left>", { noremap = true, silent = true })
-vim.keymap.set('i', '"', '""<Left>', { noremap = true, silent = true })
-vim.keymap.set('i', '{', '{}<Left>', { noremap = true, silent = true })
-vim.keymap.set('i', '<', '<><Left>', { noremap = true, silent = true })
-vim.keymap.set('i', '[', '[]<Left>', { noremap = true, silent = true })
+-- vim.keymap.set('i', '(', '()<Left>', { noremap = true, silent = true })
+-- vim.keymap.set('i', '"', '""<Left>', { noremap = true, silent = true })
+-- vim.keymap.set('i', "'", "''<Left>", { noremap = true, silent = true })
+-- vim.keymap.set('i', '"', '""<Left>', { noremap = true, silent = true })
+-- vim.keymap.set('i', '{', '{}<Left>', { noremap = true, silent = true })
+-- vim.keymap.set('i', '<', '<><Left>', { noremap = true, silent = true })
+-- vim.keymap.set('i', '[', '[]<Left>', { noremap = true, silent = true })
 
 -- Show diagnostics in a floating window when hovering over a diagnostic with the cursor
 vim.keymap.set('n', '<leader>dd', vim.diagnostic.open_float, { desc = 'Show diagnostics in a floating window' })
@@ -196,7 +196,12 @@ require('lazy').setup({
     opts = {},
   },
   { 'christoomey/vim-tmux-navigator', lazy = false },
-
+  {
+    'chomosuke/typst-preview.nvim',
+    lazy = false, -- or ft = 'typst'
+    version = '1.*',
+    opts = {}, -- lazy.nvim will implicitly calls `setup {}`
+  },
   { 'github/copilot.vim' },
 
   -- Maybe someday i will use copilot.lua... not right now...
@@ -294,33 +299,28 @@ require('lazy').setup({
     ---@module 'oil'
     ---@type oil.SetupOpts
     opts = {},
-    -- Optional dependencies
-    dependencies = { { 'nvim-mini/mini.icons', opts = {} } },
-    -- dependencies = { "nvim-tree/nvim-web-devicons" }, -- use if you prefer nvim-web-devicons
-    -- Lazy loading is not recommended because it is very tricky to make it work correctly in all situations.
-    lazy = false,
+    dependencies = { 'nvim-tree/nvim-web-devicons' },
+    config = function()
+      require('oil').setup {
+        default_file_explorer = true,
+        delete_to_trash = true,
+        skip_confirm_for_simple_edits = true,
+        view_options = {
+          show_hidden = true,
+          natural_order = true,
+          is_always_hidden = function(name, _) return name == '..' or name == '.git' end,
+        },
+        win_options = {
+          wrap = true,
+        },
+      }
+    end,
   },
   {
     'nvim-zh/colorful-winsep.nvim',
     config = true,
     event = { 'WinLeave' },
   },
-  -- Alternatively, use `config = function() ... end` for full control over the configuration.
-  --
-  -- If you prefer to call `setup` explicitly, use:
-  --    {
-  --        'lewis6991/gitsigns.nvim',
-  --        config = function()
-  --            require('gitsigns').setup({
-  --                -- Your gitsigns configuration here
-  --            })
-  --        end,
-  --    }
-  --
-  -- Here is a more advanced example where we pass configuration
-  -- options to `gitsigns.nvim`.
-  --
-  -- See `:help gitsigns` to understand what the configuration keys do
   { -- Adds git related signs to the gutter, as well as utilities for managing changes
     'lewis6991/gitsigns.nvim',
     opts = {
@@ -333,6 +333,9 @@ require('lazy').setup({
       },
     },
   },
+
+  -- Git wrapper
+  { 'tpope/vim-fugitive' },
 
   -- NOTE: Plugins can also be configured to run Lua code when they are loaded.
   --
@@ -525,10 +528,10 @@ require('lazy').setup({
     -- Main LSP Configuration
     'neovim/nvim-lspconfig',
     dependencies = {
-      -- Automatically install LSPs and related tools to stdpath for Neovim
-      -- Mason must be loaded before its dependents so we need to set it up here.
-      -- NOTE: `opts = {}` is the same as calling `require('mason').setup({})`
-      { 'mason-org/mason.nvim', opts = {} },
+      { 'mason-org/mason.nvim', opts = {
+
+        pip = { upgrade_pip = false },
+      } },
       'WhoIsSethDaniel/mason-tool-installer.nvim',
 
       -- Useful status updates for LSP.
@@ -912,17 +915,42 @@ require('lazy').setup({
 
   { -- Highlight, edit, and navigate code
     'nvim-treesitter/nvim-treesitter',
+    branch = 'main', -- Ensure you are using the main branch for Nvim 0.12
+    build = ':TSUpdate',
     config = function()
-      local filetypes = { 'bash', 'c', 'diff', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'query', 'vim', 'vimdoc', 'go' }
-      require('nvim-treesitter').install(filetypes)
+      local ts = require 'nvim-treesitter'
+
+      -- Fixes: "is not in runtimepath" error
+      -- Tells nvim-treesitter where parsers live and automatically adds it to runtimepath
+      ts.setup {
+        install_dir = vim.fn.stdpath 'data' .. '/site',
+      }
+
+      local filetypes = {
+        'bash',
+        'c',
+        'diff',
+        'html',
+        'lua',
+        'luadoc',
+        'markdown',
+        'markdown_inline',
+        'query',
+        'vim',
+        'vimdoc',
+        'go',
+      }
+
+      -- Install missing parsers
+      ts.install(filetypes)
+
+      -- Enable treesitter highlighting automatically for configured filetypes
       vim.api.nvim_create_autocmd('FileType', {
         pattern = filetypes,
-        callback = function() vim.treesitter.start() end,
+        callback = function() pcall(vim.treesitter.start) end,
       })
     end,
-  },
-
-  -- The following comments only work if you have downloaded the kickstart repo, not just copy pasted the
+  }, -- The following comments only work if you have downloaded the kickstart repo, not just copy pasted the
   -- init.lua. If you want these files, they are in the repository, so you can just download them and
   -- place them in the correct locations.
 
