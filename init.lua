@@ -202,9 +202,32 @@ require('lazy').setup({
     version = '1.*',
     opts = {}, -- lazy.nvim will implicitly calls `setup {}`
   },
-  { 'github/copilot.vim' },
+  {
+    -- Next Edit Suggestions (NES) rendered as reviewable inline diffs.
+    -- This uses the Copilot language server installed below via Mason.
+    'folke/sidekick.nvim',
+    lazy = false,
+    opts = {
+      nes = {
+        debounce = 300,
+      },
+    },
+    keys = {
+      {
+        '<Tab>',
+        function()
+          if require('sidekick').nes_jump_or_apply() then return end
+          -- In normal mode terminals generally cannot distinguish <Tab> and <C-i>.
+          return '<C-i>'
+        end,
+        mode = 'n',
+        expr = true,
+        desc = 'Copilot: go to/apply next edit suggestion',
+      },
+    },
+  },
 
-  -- Maybe someday i will use copilot.lua... not right now...
+  -- copilot.lua is an alternative Copilot client. Sidekick above provides NES directly.
   -- {
   --   'zbirenbaum/copilot.lua',
   --   cmd = 'Copilot',
@@ -676,7 +699,7 @@ require('lazy').setup({
       vim.list_extend(ensure_installed, {
         'lua-language-server', -- Lua Language server
         'stylua', -- Used to format Lua code
-        'copilot-language-server', -- Copilot LSP server used by copilot-lsp
+        'copilot-language-server', -- Mason package for the copilot LSP config
         'ruff', -- Python linter
         'tailwindcss-language-server', -- TailwindCSS LSP server
         -- You can add other tools here that you want Mason to install
@@ -689,6 +712,11 @@ require('lazy').setup({
         vim.lsp.config(name, server)
         vim.lsp.enable(name)
       end
+
+      -- `copilot-language-server` is the Mason package; `copilot` is its
+      -- nvim-lspconfig name. Keep them separate so Mason can resolve the package.
+      vim.lsp.config('copilot', { capabilities = capabilities })
+      vim.lsp.enable 'copilot'
 
       -- Special Lua Config, as recommended by neovim help docs
       vim.lsp.config('lua_ls', {
@@ -815,6 +843,14 @@ require('lazy').setup({
         --
         -- See :h blink-cmp-config-keymap for defining your own keymap
         preset = 'default',
+
+        ['<Tab>'] = {
+          'snippet_forward',
+          function()
+            return require('sidekick').nes_jump_or_apply()
+          end,
+          'fallback',
+        },
 
         -- For more advanced Luasnip keymaps (e.g. selecting choice nodes, expansion) see:
         --    https://github.com/L3MON4D3/LuaSnip?tab=readme-ov-file#keymaps
